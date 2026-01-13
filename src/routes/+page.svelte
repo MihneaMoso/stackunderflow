@@ -1,3 +1,8 @@
+<svelte:head>
+    <title>WebLLM demo</title> 
+</svelte:head>
+   
+
 <script lang="ts">
     import { onMount } from "svelte";
     import { CreateMLCEngine } from "@mlc-ai/web-llm";
@@ -11,7 +16,7 @@
     import { saveMessages, loadMessages } from "$lib/db";
 
     // Configuration
-    const SELECTED_MODEL = "Llama-3.2-1B-Instruct-q4f32_1-MLC"; // A balanced model for browser use
+    const SELECTED_MODEL = "Qwen2.5-7B-Instruct-q4f16_1-MLC"; // A balanced model for browser use
 
     // State
     let engine: MLCEngine;
