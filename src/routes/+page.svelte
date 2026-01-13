@@ -108,48 +108,68 @@
 </script>
 
 <main class="container">
-  <div class="header">
-    <h1>Offline WebLLM</h1>
-    <button class="clear-btn" on:click={clearHistory} disabled={isGenerating}>Clear History</button>
-  </div>
-
-  {#if isLoadingModel}
-    <div class="loading-box">
-      <p>Loading Model...</p>
-      <p class="sub-text">{loadingProgress}</p>
+    <div class="header">
+        <h1>Offline WebLLM</h1>
+        <button
+            class="clear-btn"
+            on:click={clearHistory}
+            disabled={isGenerating}>Clear History</button
+        >
     </div>
-  {/if}
 
-  <div class="chat-box">
-    {#each messages as msg}
-      {#if msg.role !== 'system'}
-        <div class="message {msg.role}">
-          <strong>{msg.role === 'user' ? 'You' : 'AI'}:</strong>
-          <p>{msg.content}</p>
+    {#if isLoadingModel}
+        <div class="loading-box">
+            <p>Loading Model...</p>
+            <p class="sub-text">{loadingProgress}</p>
         </div>
-      {/if}
-    {/each}
-  </div>
+    {/if}
 
-  <div class="input-area">
-    <input 
-      bind:value={userInput} 
-      on:keydown={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage()}
-      placeholder="Type a message..." 
-      disabled={isLoadingModel || isGenerating}
-    />
-    <button on:click={sendMessage} disabled={isLoadingModel || isGenerating}>
-      Send
-    </button>
-  </div>
+    <div class="chat-box">
+        {#each messages as msg}
+            {#if msg.role !== "system"}
+                <div class="message {msg.role}">
+                    <strong>{msg.role === "user" ? "You" : "AI"}:</strong>
+                    <p>{msg.content}</p>
+                </div>
+            {/if}
+        {/each}
+    </div>
+
+    <div class="input-area">
+        <input
+            bind:value={userInput}
+            on:keydown={(e) =>
+                e.key === "Enter" && !e.shiftKey && sendMessage()}
+            placeholder="Type a message..."
+            disabled={isLoadingModel || isGenerating}
+        />
+        <button
+            on:click={sendMessage}
+            disabled={isLoadingModel || isGenerating}
+        >
+            Send
+        </button>
+    </div>
 </main>
 
 <style>
+    /* Same styles as before, with small additions */
     .container {
         max-width: 800px;
         margin: 0 auto;
         padding: 20px;
         font-family: sans-serif;
+    }
+    .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+    .clear-btn {
+        background: #dc3545;
+        font-size: 0.8em;
+        padding: 5px 10px;
     }
     .loading-box {
         padding: 20px;
