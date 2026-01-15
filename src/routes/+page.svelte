@@ -17,6 +17,7 @@
 
     // Configuration
     const SELECTED_MODEL = "Qwen2.5-7B-Instruct-q4f16_1-MLC"; // A balanced model for browser use
+    const SYSTEM_PROMPT = "You are a helpful AI assistant that has access to any knowledge in your training data and specializes in Linux system administration, with vast knowledge of bash and advanced utilities like sed, awk, and git.";
 
     // State
     let engine: MLCEngine;
@@ -30,7 +31,7 @@
         {
             role: "system",
             content:
-                "You are a helpful AI assistant that has access to any knowledge in your training data and specializes in Linux system administration, with vast knowledge of bash and advanced utilities like sed, awk, and git.",
+                SYSTEM_PROMPT,
         },
     ];
 
@@ -105,7 +106,7 @@
             {
                 role: "system",
                 content:
-                    "You are a helpful AI assistant running offline in the browser.",
+                    SYSTEM_PROMPT,
             },
         ];
         saveMessages(messages);
