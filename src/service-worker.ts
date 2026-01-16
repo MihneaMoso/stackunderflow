@@ -30,54 +30,52 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   // @ts-ignore
-  if (event.request.method !== 'GET') return;
+  const request = event.request;
+  
+  // Only handle GET requests
+  if (request.method !== 'GET') return;
 
-  async function respond() {
-    // @ts-ignore
-    const url = new URL(event.request.url);
+  // @ts-ignore
+  const url = new URL(request.url);
 
-    // Don't intercept cross-origin requests at all - let them go directly to network
-    // This is critical for WebLLM which fetches models from external CDNs
-    if (url.origin !== self.location.origin) {
-      // @ts-ignore
-      return fetch(event.request);
-    }
+  // CRITICAL: Don't intercept cross-origin requests at all
+  // This is essential for WebLLM which fetches models from Hugging Face CDN
+  if (url.origin !== self.location.origin) {
+    return; // Let the browser handle it normally
+  }
 
-    // Also skip WebLLM-related files even if same-origin
-    if (url.pathname.includes('.wasm') ||
-        url.pathname.includes('ndarray-cache') ||
-        url.pathname.includes('mlc-') ||
-        url.pathname.includes('tokenizer')) {
-      // @ts-ignore
-      return fetch(event.request);
-    }
+  // Also skip WebLLM-related files
+  if (url.pathname.includes('.wasm') ||
+      url.pathname.includes('ndarray') ||
+      url.pathname.includes('mlc') ||
+      url.pathname.includes('tokenizer') ||
+      url.pathname.includes('params')) {
+    return; // Let the browser handle it normally
+  }
 
+  async function respond(): Promise<Response> {
     const cache = await caches.open(CACHE);
 
     // Serve build assets from the cache
     if (ASSETS.includes(url.pathname)) {
-      const response = await cache.match(url.pathname);
-      if (response) return response;
+      const cachedResponse = await cache.match(url.pathname);
+      if (cachedResponse) return cachedResponse;
     }
 
     // Try the network, fallback to cache if offline
     try {
-      // @ts-ignore
-      const response = await fetch(event.request);
-      // Only cache same-origin, successful responses that are cacheable
+      const response = await fetch(request);
+      // Only cache successful, same-origin responses
       if (response.status === 200 && response.type === 'basic') {
-        try {
-          // @ts-ignore
-          cache.put(event.request, response.clone());
-        } catch (e) {
-          // Ignore cache errors - some responses can't be cached
-          console.warn('Failed to cache:', url.pathname);
-        }
+        cache.put(request, response.clone()).catch(() => {
+          // Ignore cache errors silently
+        });
       }
       return response;
     } catch {
-      // @ts-ignore
-      return cache.match(event.request);
+      const cachedResponse = await cache.match(request);
+      if (cachedResponse) return cachedResponse;
+      throw new Error('No cached response available');
     }
   }
 

@@ -5,13 +5,10 @@
 
 <script lang="ts">
     import { onMount } from "svelte";
-    import { CreateMLCEngine } from "@mlc-ai/web-llm";
     import { CreateWebWorkerMLCEngine } from "@mlc-ai/web-llm";
     import type {
-        MLCEngine,
+        MLCEngineInterface,
         ChatCompletionMessageParam,
-        ChatCompletionToolChoiceOption,
-        ChatCompletionNamedToolChoice,
     } from "@mlc-ai/web-llm";
     import { saveMessages, loadMessages } from "$lib/db";
 
@@ -20,7 +17,7 @@
     const SYSTEM_PROMPT = "You are a helpful AI assistant that has access to any knowledge in your training data and specializes in Linux system administration, with vast knowledge of bash and advanced utilities like sed, awk, and git.";
 
     // State
-    let engine: MLCEngine;
+    let engine: MLCEngineInterface;
     let isLoadingModel = true;
     let isGenerating = false;
     let loadingProgress = "Initializing...";
@@ -52,16 +49,20 @@
 
         // 2. Initialize the worker engine
         // We use the `?worker` syntax which Vite understands to load it as a Worker
-        const Worker = (await import("$lib/worker?worker")).default;
-        const worker = new Worker();
+        const WebWorker = (await import("$lib/worker?worker")).default;
+        const worker = new WebWorker();
 
-        // 3. Initialize the engine on mount
+        // 3. Initialize the engine on mount using WebWorker
         try {
-            engine = await CreateMLCEngine(SELECTED_MODEL, {
-                initProgressCallback: (progress) => {
-                    loadingProgress = progress.text;
-                },
-            });
+            engine = await CreateWebWorkerMLCEngine(
+                worker,
+                SELECTED_MODEL,
+                {
+                    initProgressCallback: (progress) => {
+                        loadingProgress = progress.text;
+                    },
+                }
+            );
             isLoadingModel = false;
         } catch (err) {
             console.error("Failed to initialize WebLLM:", err);
