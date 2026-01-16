@@ -33,16 +33,25 @@ self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
   async function respond() {
+    // @ts-ignore
     const url = new URL(event.request.url);
 
-    // Don't intercept WebLLM model downloads from external CDNs
-    // These require special CORS handling and should go directly to network
-    if (url.hostname.includes('huggingface.co') || 
-        url.hostname.includes('cdn.') ||
-        url.pathname.includes('.wasm') ||
-        url.pathname.includes('ndarray-cache')) {
+    // Don't intercept cross-origin requests at all - let them go directly to network
+    // This is critical for WebLLM which fetches models from external CDNs
+    if (url.origin !== self.location.origin) {
+      // @ts-ignore
       return fetch(event.request);
     }
+
+    // Also skip WebLLM-related files even if same-origin
+    if (url.pathname.includes('.wasm') ||
+        url.pathname.includes('ndarray-cache') ||
+        url.pathname.includes('mlc-') ||
+        url.pathname.includes('tokenizer')) {
+      // @ts-ignore
+      return fetch(event.request);
+    }
+
     const cache = await caches.open(CACHE);
 
     // Serve build assets from the cache
@@ -53,12 +62,21 @@ self.addEventListener('fetch', (event) => {
 
     // Try the network, fallback to cache if offline
     try {
+      // @ts-ignore
       const response = await fetch(event.request);
-      if (response.status === 200) {
-        cache.put(event.request, response.clone());
+      // Only cache same-origin, successful responses that are cacheable
+      if (response.status === 200 && response.type === 'basic') {
+        try {
+          // @ts-ignore
+          cache.put(event.request, response.clone());
+        } catch (e) {
+          // Ignore cache errors - some responses can't be cached
+          console.warn('Failed to cache:', url.pathname);
+        }
       }
       return response;
     } catch {
+      // @ts-ignore
       return cache.match(event.request);
     }
   }
