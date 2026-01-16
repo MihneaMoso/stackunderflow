@@ -24,6 +24,7 @@
     let isLoadingModel = true;
     let isGenerating = false;
     let loadingProgress = "Initializing...";
+    let loadingError = "";
     let userInput = "";
 
     // Chat history state
@@ -36,6 +37,13 @@
     ];
 
     onMount(async () => {
+        // Check for WebGPU support first
+        if (!('gpu' in navigator)) {
+            loadingError = "WebGPU is not supported in this browser. Please use Chrome 113+ or Edge 113+.";
+            isLoadingModel = false;
+            return;
+        }
+
         // 1. Load history from IndexedDB first
         const saved = await loadMessages();
         if (saved && saved.length > 0) {
@@ -48,12 +56,18 @@
         const worker = new Worker();
 
         // 3. Initialize the engine on mount
-        engine = await CreateMLCEngine(SELECTED_MODEL, {
-            initProgressCallback: (progress) => {
-                loadingProgress = progress.text;
-            },
-        });
-        isLoadingModel = false;
+        try {
+            engine = await CreateMLCEngine(SELECTED_MODEL, {
+                initProgressCallback: (progress) => {
+                    loadingProgress = progress.text;
+                },
+            });
+            isLoadingModel = false;
+        } catch (err) {
+            console.error("Failed to initialize WebLLM:", err);
+            loadingError = `Failed to load model: ${err instanceof Error ? err.message : String(err)}`;
+            isLoadingModel = false;
+        }
     });
 
     async function sendMessage() {
@@ -123,7 +137,12 @@
         >
     </div>
 
-    {#if isLoadingModel}
+    {#if loadingError}
+        <div class="error-box">
+            <p>⚠️ Error</p>
+            <p class="sub-text">{loadingError}</p>
+        </div>
+    {:else if isLoadingModel}
         <div class="loading-box">
             <p>Loading Model...</p>
             <p class="sub-text">{loadingProgress}</p>
@@ -183,6 +202,15 @@
         border-radius: 8px;
         text-align: center;
         margin-bottom: 20px;
+    }
+    .error-box {
+        padding: 20px;
+        background: #fee2e2;
+        border: 1px solid #dc3545;
+        border-radius: 8px;
+        text-align: center;
+        margin-bottom: 20px;
+        color: #dc3545;
     }
     .sub-text {
         font-size: 0.8em;

@@ -34,6 +34,15 @@ self.addEventListener('fetch', (event) => {
 
   async function respond() {
     const url = new URL(event.request.url);
+
+    // Don't intercept WebLLM model downloads from external CDNs
+    // These require special CORS handling and should go directly to network
+    if (url.hostname.includes('huggingface.co') || 
+        url.hostname.includes('cdn.') ||
+        url.pathname.includes('.wasm') ||
+        url.pathname.includes('ndarray-cache')) {
+      return fetch(event.request);
+    }
     const cache = await caches.open(CACHE);
 
     // Serve build assets from the cache
