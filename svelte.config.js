@@ -1,9 +1,28 @@
 import adapterAuto from '@sveltejs/adapter-auto';
 import adapterCloudflare from '@sveltejs/adapter-cloudflare';
+import adapterStatic from '@sveltejs/adapter-static';
 import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
 
-// Use Cloudflare adapter when CF_PAGES is set (Cloudflare Pages build environment)
-const adapter = process.env.CF_PAGES ? adapterCloudflare() : adapterAuto();
+// Select adapter based on deployment environment
+function getAdapter() {
+	if (process.env.CF_PAGES) {
+		// Cloudflare Pages
+		return adapterCloudflare();
+	}
+	if (process.env.GITHUB_ACTIONS) {
+		// GitHub Pages (static build)
+		return adapterStatic({
+			pages: 'build',
+			assets: 'build',
+			fallback: 'index.html', // SPA fallback
+			precompress: false
+		});
+	}
+	// Default: Vercel, Netlify, etc.
+	return adapterAuto();
+}
+
+const adapter = getAdapter();
 
 /** @type {import('@sveltejs/kit').Config} */
 const config = {

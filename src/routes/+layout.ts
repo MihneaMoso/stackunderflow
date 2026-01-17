@@ -1,4 +1,6 @@
-// If you're using a fallback (i.e. SPA mode) you don't need to prerender all
-// pages by setting this here, but should prerender as many as possible to
-// avoid large performance and SEO impacts
+// For static/SPA builds (GitHub Pages), we use a fallback index.html
+// Disable SSR so the app renders entirely on the client
+export const ssr = false;
+
+// Prerender the shell for static deployment
 export const prerender = true;
