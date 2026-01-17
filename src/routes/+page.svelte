@@ -60,7 +60,9 @@
                 {
                     initProgressCallback: (progress) => {
                         loadingProgress = progress.text;
+                        console.log("[WebLLM]", progress.text);
                     },
+                    logLevel: "INFO",
                 }
             );
             isLoadingModel = false;

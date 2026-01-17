@@ -1,12 +1,19 @@
 // src/service-worker.ts
+// Minimal service worker that does NOT interfere with WebLLM's model loading
+// WebLLM handles its own caching via IndexedDB or Cache API
+
 /// <reference types="@sveltejs/kit" />
 import { build, files, version } from '$service-worker';
 
 const CACHE = `cache-${version}`;
+// Only cache app build assets, not external resources
 const ASSETS = [...build, ...files];
 
 self.addEventListener('install', (event) => {
-  // Create a new cache and add all files to it
+  // Skip waiting to activate immediately
+  // @ts-ignore
+  self.skipWaiting();
+  
   async function addFilesToCache() {
     const cache = await caches.open(CACHE);
     await cache.addAll(ASSETS);
@@ -17,10 +24,17 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('activate', (event) => {
-  // Remove previous cached data from disk
+  // Take control immediately
+  // @ts-ignore
+  event.waitUntil(self.clients.claim());
+  
+  // Remove old caches
   async function deleteOldCaches() {
     for (const key of await caches.keys()) {
-      if (key !== CACHE) await caches.delete(key);
+      // Only delete our app caches, not WebLLM caches
+      if (key.startsWith('cache-') && key !== CACHE) {
+        await caches.delete(key);
+      }
     }
   }
 
@@ -38,45 +52,53 @@ self.addEventListener('fetch', (event) => {
   // @ts-ignore
   const url = new URL(request.url);
 
-  // CRITICAL: Don't intercept cross-origin requests at all
-  // This is essential for WebLLM which fetches models from Hugging Face CDN
-  if (url.origin !== self.location.origin) {
-    return; // Let the browser handle it normally
+  // CRITICAL: Never intercept cross-origin requests
+  // WebLLM fetches models from huggingface.co and other CDNs
+  if (url.origin !== location.origin) {
+    return; // Let browser handle it
   }
 
-  // Also skip WebLLM-related files
-  if (url.pathname.includes('.wasm') ||
-      url.pathname.includes('ndarray') ||
-      url.pathname.includes('mlc') ||
-      url.pathname.includes('tokenizer') ||
-      url.pathname.includes('params')) {
-    return; // Let the browser handle it normally
+  // CRITICAL: Never intercept WebLLM-related resources
+  // These patterns match WebLLM model files, WASM, and cache files
+  const webllmPatterns = [
+    '.wasm',
+    'ndarray',
+    'params',
+    'tokenizer',
+    'mlc',
+    'model',
+    '.bin',
+    '.json'
+  ];
+  
+  if (webllmPatterns.some(pattern => url.pathname.toLowerCase().includes(pattern))) {
+    return; // Let browser handle it
+  }
+
+  // Only serve from cache for known static assets
+  if (!ASSETS.includes(url.pathname)) {
+    return; // Let browser handle it
   }
 
   async function respond(): Promise<Response> {
     const cache = await caches.open(CACHE);
-
-    // Serve build assets from the cache
-    if (ASSETS.includes(url.pathname)) {
-      const cachedResponse = await cache.match(url.pathname);
-      if (cachedResponse) return cachedResponse;
+    const cachedResponse = await cache.match(request);
+    
+    if (cachedResponse) {
+      return cachedResponse;
     }
 
-    // Try the network, fallback to cache if offline
-    try {
-      const response = await fetch(request);
-      // Only cache successful, same-origin responses
-      if (response.status === 200 && response.type === 'basic') {
-        cache.put(request, response.clone()).catch(() => {
-          // Ignore cache errors silently
-        });
-      }
-      return response;
-    } catch {
-      const cachedResponse = await cache.match(request);
-      if (cachedResponse) return cachedResponse;
-      throw new Error('No cached response available');
+    // If not in cache, fetch from network
+    const response = await fetch(request);
+    
+    // Only cache successful responses
+    if (response.ok) {
+      cache.put(request, response.clone()).catch(() => {
+        // Ignore cache errors
+      });
     }
+    
+    return response;
   }
 
   // @ts-ignore
