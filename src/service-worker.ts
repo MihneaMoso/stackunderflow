@@ -58,6 +58,13 @@ self.addEventListener('fetch', (event) => {
     return; // Let browser handle it
   }
 
+  // 1. IGNORE EXTERNAL REQUESTS (Like Model Weights)
+  // If the request is not for your own domain, let it go to the network directly.
+  // WebLLM handles its own caching for these files.
+  if (!url.origin.includes(self.location.origin)) {
+    return; // Fallback to browser default (network)
+  }
+
   // CRITICAL: Never intercept WebLLM-related resources
   // These patterns match WebLLM model files, WASM, and cache files
   const webllmPatterns = [
@@ -83,6 +90,12 @@ self.addEventListener('fetch', (event) => {
   async function respond(): Promise<Response> {
     const cache = await caches.open(CACHE);
     const cachedResponse = await cache.match(request);
+
+    // Serve build assets from cache
+    if (ASSETS.includes(url.pathname)) {
+      const response = await cache.match(url.pathname);
+      if (response) return response;
+    }
     
     if (cachedResponse) {
       return cachedResponse;
