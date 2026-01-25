@@ -11,9 +11,17 @@
         ChatCompletionMessageParam,
     } from "@mlc-ai/web-llm";
     import { saveMessages, loadMessages } from "$lib/db";
+    import { marked } from "marked";
+
+    // Configure marked for safe rendering
+    marked.setOptions({
+        breaks: true, // Convert \n to <br>
+        gfm: true,    // GitHub Flavored Markdown
+    });
 
     // Configuration
-    const SELECTED_MODEL = "Qwen2.5-7B-Instruct-q4f16_1-MLC"; // A balanced model for browser use
+    // const SELECTED_MODEL = "SmolLM2-1.7B-Instruct-q4f16_1-MLC"; // A balanced model for browser use
+    const SELECTED_MODEL = "Qwen2.5-7B-Instruct-q4f16_1-MLC";
     const SYSTEM_PROMPT = "You are a helpful AI assistant that has access to any knowledge in your training data and specializes in Linux system administration, with vast knowledge of bash and advanced utilities like sed, awk, and git.";
 
     // State
@@ -157,7 +165,11 @@
             {#if msg.role !== "system"}
                 <div class="message {msg.role}">
                     <strong>{msg.role === "user" ? "You" : "AI"}:</strong>
-                    <p>{msg.content}</p>
+                    {#if msg.role === "assistant"}
+                        <div class="markdown-content">{@html marked(String(msg.content || ""))}</div>
+                    {:else}
+                        <p>{msg.content}</p>
+                    {/if}
                 </div>
             {/if}
         {/each}
@@ -243,6 +255,65 @@
         align-self: flex-start;
         background-color: #f1f1f1;
         color: black;
+    }
+    /* Markdown content styles */
+    .markdown-content {
+        line-height: 1.6;
+    }
+    .markdown-content :global(p) {
+        margin: 0.5em 0;
+    }
+    .markdown-content :global(p:first-child) {
+        margin-top: 0;
+    }
+    .markdown-content :global(p:last-child) {
+        margin-bottom: 0;
+    }
+    .markdown-content :global(pre) {
+        background-color: #1e1e1e;
+        color: #d4d4d4;
+        padding: 12px;
+        border-radius: 6px;
+        overflow-x: auto;
+        margin: 0.5em 0;
+    }
+    .markdown-content :global(code) {
+        font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+        font-size: 0.9em;
+    }
+    .markdown-content :global(:not(pre) > code) {
+        background-color: rgba(0, 0, 0, 0.1);
+        padding: 2px 6px;
+        border-radius: 4px;
+    }
+    .markdown-content :global(ul), .markdown-content :global(ol) {
+        margin: 0.5em 0;
+        padding-left: 1.5em;
+    }
+    .markdown-content :global(li) {
+        margin: 0.25em 0;
+    }
+    .markdown-content :global(blockquote) {
+        border-left: 3px solid #ccc;
+        margin: 0.5em 0;
+        padding-left: 1em;
+        color: #666;
+    }
+    .markdown-content :global(h1), 
+    .markdown-content :global(h2), 
+    .markdown-content :global(h3) {
+        margin: 0.5em 0 0.25em 0;
+    }
+    .markdown-content :global(table) {
+        border-collapse: collapse;
+        margin: 0.5em 0;
+    }
+    .markdown-content :global(th), .markdown-content :global(td) {
+        border: 1px solid #ccc;
+        padding: 6px 12px;
+    }
+    .markdown-content :global(th) {
+        background-color: rgba(0, 0, 0, 0.05);
     }
     .input-area {
         margin-top: 20px;
